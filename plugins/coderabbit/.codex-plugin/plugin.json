@@ -34,9 +34,7 @@
     "composerIcon": "./assets/coderabbit-small.png",
     "logo": "./assets/coderabbit.png",
     "defaultPrompt": [
-      "Review my current changes and provide feedback",
-      "Find the highest-risk issues in this branch",
-      "Turn CodeRabbit findings into fixes"
+      "Review my current changes and provide feedback"
     ],
     "screenshots": []
   }
