@@ -35,7 +35,7 @@ coderabbit auth login --agent
 Default review:
 
 ```bash
-coderabbit review --plain
+coderabbit review --agent
 ```
 
 Common narrower scopes:
