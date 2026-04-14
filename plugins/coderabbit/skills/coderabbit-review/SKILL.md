@@ -24,11 +24,13 @@ coderabbit --version
 coderabbit auth status --agent
 ```
 
-If auth is missing, run:
+If auth is missing or the CLI reports the user is not authenticated, do not stop at the error. Run the login flow yourself:
 
 ```bash
 coderabbit auth login --agent
 ```
+
+Then re-run `coderabbit auth status --agent` and only continue to review commands after authentication succeeds.
 
 ## Review Commands
 
