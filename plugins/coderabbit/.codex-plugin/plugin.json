@@ -1,6 +1,6 @@
 {
   "name": "coderabbit",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "AI-powered code review in Codex, powered by CodeRabbit.",
   "author": {
     "name": "CodeRabbit AI",
@@ -34,9 +34,7 @@
     "composerIcon": "./assets/coderabbit-small.png",
     "logo": "./assets/coderabbit.png",
     "defaultPrompt": [
-      "Review my current changes and provide feedback",
-      "Find the highest-risk issues in this branch",
-      "Turn CodeRabbit findings into fixes"
+      "Review my current changes and provide feedback"
     ],
     "screenshots": []
   }

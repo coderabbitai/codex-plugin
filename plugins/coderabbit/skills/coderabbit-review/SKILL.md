@@ -56,7 +56,7 @@ If `AGENTS.md`, `.coderabbit.yaml`, or `CLAUDE.md` exist in the repo root, pass 
 - Parse each NDJSON line independently.
 - Collect `finding` events and group them by severity.
 - Ignore `status` events in the user-facing summary.
-- If an `error` event is returned, report the failure instead of inventing a manual review.
+- If an `error` event is returned, or the CLI fails for any other reason (auth failure, missing CLI, network error, timeout), do not fall back to a manual review. Report the exact failure and tell the user how to resolve it (e.g. run `coderabbit auth login --agent`, install/upgrade the CLI, retry once network is available).
 - Treat a running CodeRabbit review as healthy for up to 10 minutes even if output is quiet.
 - Do not emit intermediary waiting or polling messages during that 10-minute window.
 - Only report timeout or failure after the full 10-minute wait budget is exhausted.
@@ -64,11 +64,11 @@ If `AGENTS.md`, `.coderabbit.yaml`, or `CLAUDE.md` exist in the repo root, pass 
 ## Result Format
 
 - Start with a brief summary of the changes in the diff.
-- On a new line, state how many findings CodeRabbit found.
-- Present findings ordered by severity: critical, major, minor.
+- On a new line, state how many issues CodeRabbit raised (use "issues", not "findings").
+- Present issues ordered by severity: critical, major, minor.
 - Format the severity/category label with a space between the emoji and the text, for example `❗ Critical`, `⚠️ Major`, and `ℹ️ Minor`.
 - Include file path, impact, and the concrete fix direction.
-- If there are no findings, say `CodeRabbit found 0 findings.` and do not invent issues.
+- If there are none, say `CodeRabbit raised 0 issues.` and do not invent any.
 
 ## Guardrails
 
