@@ -37,7 +37,7 @@ Then re-run `coderabbit auth status --agent` and only continue to review command
 Default review:
 
 ```bash
-coderabbit review --plain
+coderabbit review --agent
 ```
 
 Common narrower scopes:
