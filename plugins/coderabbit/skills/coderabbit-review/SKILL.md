@@ -37,7 +37,7 @@ Then re-run `coderabbit auth status --agent` and only continue to review command
 Default review:
 
 ```bash
-coderabbit review --agent
+coderabbit review --plain
 ```
 
 Common narrower scopes:
@@ -48,6 +48,14 @@ coderabbit review --agent -t uncommitted
 coderabbit review --agent --base main
 coderabbit review --agent --base-commit <sha>
 ```
+
+To review a specific subdirectory instead of the entire repo (useful in monorepos):
+
+```bash
+coderabbit review --agent --dir <path>
+```
+
+Pass the relative path from the repo root. Only files under `<path>` will be included in the diff.
 
 If any of `AGENTS.md`, `.coderabbit.yaml`, or `CLAUDE.md` exist in the repo root, pass them with `-c` to improve review quality.
 
