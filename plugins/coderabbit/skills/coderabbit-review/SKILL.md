@@ -18,13 +18,21 @@ Stay silent while an active review is running. Do not send progress commentary a
 coderabbit --version
 ```
 
+If the command is not found or reports that CodeRabbit is not installed, do not stop at the error. Install it:
+
+```bash
+curl -fsSL https://cli.coderabbit.ai/install.sh | sh
+```
+
+Then re-run `coderabbit --version` to confirm the install succeeded before continuing. After a fresh install, proceed to the authentication step — the user will need to log in.
+
 3. Verify authentication in agent mode:
 
 ```bash
 coderabbit auth status --agent
 ```
 
-If auth is missing or the CLI reports the user is not authenticated, do not stop at the error. Initiate the login flow:
+If auth is missing or the CLI reports the user is not authenticated (including right after a fresh install), do not stop at the error. Initiate the login flow:
 
 ```bash
 coderabbit auth login --agent
