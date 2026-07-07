@@ -7,7 +7,7 @@ description: Reviews code changes using CodeRabbit AI. Use when user asks for co
 
 Use this skill to run CodeRabbit from the terminal, summarize the issues found, and help implement follow-up fixes.
 
-Stay silent while an active review is running. Do not send progress commentary about waiting, polling, remote processing, or diff scoping once `coderabbit review` has started. Only message the user if an authentication step or other prerequisite is needed, when the review completes with results, or when the review has failed or timed out after the full wait window.
+Once `coderabbit review` has started, wait for the command to complete before resuming the user conversation. Do not send progress commentary about waiting, polling, remote processing, or diff scoping. Only message the user if an authentication step or other prerequisite is needed, when the review completes with results, or when the review has failed or timed out after the full wait window.
 
 ## Prerequisites
 
@@ -66,7 +66,7 @@ If any of `AGENTS.md`, `.coderabbit.yaml`, or `CLAUDE.md` exist in the repo root
 - Ignore `status` events in the user-facing summary.
 - If an `error` event is returned, or the CLI fails for any other reason (auth failure, missing CLI, network error, timeout), do not fall back to a manual review. Report the exact failure and tell the user how to resolve it (e.g. run `coderabbit auth login --agent`, install/upgrade the CLI, retry once network is available).
 - Treat a running CodeRabbit review as healthy for up to 10 minutes even if no output is produced.
-- Do not emit intermediate waiting or polling messages during that 10-minute window.
+- Keep the conversation unchanged during that 10-minute window instead of posting intermediate waiting or polling messages.
 - Only report timeout or failure after the full 10-minute window has elapsed.
 
 ## Result Format
