@@ -24,21 +24,13 @@ If the command is not found or reports that CodeRabbit is not installed, do not 
 curl -fsSL https://cli.coderabbit.ai/install.sh | sh
 ```
 
-Then re-run `coderabbit --version` to confirm the install succeeded before continuing. After a fresh install, proceed to the authentication step — the user will need to log in.
+Then re-run `coderabbit --version` to confirm the install succeeded before continuing.
 
-3. Verify authentication in agent mode:
+3. Do not proactively check authentication. Start the requested review directly. The CLI reuses persisted credentials, refreshes expired access tokens, and resolves the current repository to the correct CodeRabbit organization. Changing repositories is not a reason to sign in again.
 
-```bash
-coderabbit auth status --agent
-```
+Only if the review returns an explicit authentication error, run `coderabbit auth status --agent` to confirm the failure. If authentication is missing, initiate `coderabbit auth login --agent`, wait for it to succeed, and retry the same review command once.
 
-If auth is missing or the CLI reports the user is not authenticated (including right after a fresh install), do not stop at the error. Initiate the login flow:
-
-```bash
-coderabbit auth login --agent
-```
-
-Then re-run `coderabbit auth status --agent` and only continue to review commands after authentication succeeds.
+If browser authentication cannot run in a non-interactive or ephemeral environment, tell the user to configure an Agentic API key in that environment with `coderabbit auth login --api-key <key>`. Do not repeatedly start browser login or request separate authentication for each repository.
 
 ## Review Commands
 
