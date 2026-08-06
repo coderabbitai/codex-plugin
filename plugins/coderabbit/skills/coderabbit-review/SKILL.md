@@ -7,6 +7,8 @@ description: Reviews code changes using CodeRabbit AI. Use when user asks for co
 
 Use this skill to run CodeRabbit from the terminal, summarize the issues found, and help implement follow-up fixes.
 
+Run every `coderabbit` command with command-scoped elevated network access through Codex's normal approval mechanism. This makes Codex use the host installation and credential store instead of the sandbox, whose isolated auth state can incorrectly report that an already-authenticated user is signed out. This does not permit disabling the sandbox for the session or bypassing approvals. Never use a sandboxed `coderabbit` command to decide whether authentication is required.
+
 Stay silent while an active review is running. Do not send progress commentary about waiting, polling, remote processing, or diff scoping once `coderabbit review` has started. Only message the user if an authentication step or other prerequisite is needed, when the review completes with results, or when the review has failed or timed out after the full wait window.
 
 ## Prerequisites
@@ -24,7 +26,7 @@ If the command is not found or reports that CodeRabbit is not installed, do not 
 curl -fsSL https://cli.coderabbit.ai/install.sh | sh
 ```
 
-Then re-run `coderabbit --version` to confirm the install succeeded before continuing. After a fresh install, proceed to the authentication step — the user will need to log in.
+Run the installer with elevated network access so it installs on the host. Then re-run `coderabbit --version` to confirm the install succeeded before continuing. After a fresh install, run the elevated authentication check below and ask the user to log in only if it reports that the host is not authenticated.
 
 3. Verify authentication in agent mode:
 
@@ -32,13 +34,13 @@ Then re-run `coderabbit --version` to confirm the install succeeded before conti
 coderabbit auth status --agent
 ```
 
-If auth is missing or the CLI reports the user is not authenticated (including right after a fresh install), do not stop at the error. Initiate the login flow:
+If the elevated auth check reports that the user is not authenticated (including right after a fresh install), do not run the login flow yourself. Ask the user to authenticate once on the host with:
 
 ```bash
 coderabbit auth login --agent
 ```
 
-Then re-run `coderabbit auth status --agent` and only continue to review commands after authentication succeeds.
+After the user confirms it succeeded, re-run `coderabbit auth status --agent` with elevated network access and only continue after it succeeds. A new Codex session or repository is not by itself a reason to authenticate again.
 
 ## Review Commands
 
@@ -64,7 +66,7 @@ If `AGENTS.md` or `.coderabbit.yaml` exists in the repo root, pass the relevant 
 - Parse each NDJSON line independently.
 - Collect `finding` events and group them by severity.
 - Ignore `status` events in the user-facing summary.
-- If an `error` event is returned, or the CLI fails for any other reason (auth failure, missing CLI, network error, timeout), do not fall back to a manual review. Report the exact failure and tell the user how to resolve it (e.g. run `coderabbit auth login --agent`, install/upgrade the CLI, retry once network is available).
+- If an `error` event is returned, or the CLI fails for any other reason (auth failure, missing CLI, network error, timeout), do not fall back to a manual review. Report the exact failure. For an auth failure, re-check auth with elevated network access; only ask the user to run `coderabbit auth login --agent` if that elevated check says the host is not authenticated. For other failures, tell the user how to resolve them (e.g. install/upgrade the CLI or retry once network is available).
 - Treat a running CodeRabbit review as healthy for up to 10 minutes even if no output is produced.
 - Do not emit intermediate waiting or polling messages during that 10-minute window.
 - Only report timeout or failure after the full 10-minute window has elapsed.
