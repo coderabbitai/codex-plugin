@@ -47,13 +47,19 @@ required. Never ask the user to paste an API key into the conversation.
 
 ## Review Commands
 
-Default review:
+Default agent review:
 
 ```bash
-coderabbit review --agent
+coderabbit review --agent -t all
 ```
 
-Common narrower scopes:
+CLI defaults to know:
+
+- `coderabbit review` uses plain text output by default.
+- `--agent` changes output to structured findings for agent workflows.
+- `--type` defaults to `all`, which includes committed, staged, unstaged, and untracked changes.
+
+Common scopes and comparisons:
 
 ```bash
 coderabbit review --agent --committed
@@ -61,6 +67,7 @@ coderabbit review --agent --uncommitted
 coderabbit review --agent --uncommitted --include-untracked
 coderabbit review --agent --base main
 coderabbit review --agent --base-commit <sha>
+coderabbit review --agent --dir /path/to/repo
 ```
 
 If any of `AGENTS.md`, `.coderabbit.yaml`, or `CLAUDE.md` exist in the repo root, pass them with `-c` to improve review quality.
