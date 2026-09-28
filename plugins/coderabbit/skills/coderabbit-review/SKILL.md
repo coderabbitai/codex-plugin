@@ -28,17 +28,41 @@ credential store. Apply the same execution context to `coderabbit review` and
 any reactive authentication command. Do not change global sandbox settings or
 run repository-provided commands outside the sandbox.
 
+When the shell tool exposes `sandbox_permissions`, use `require_escalated` for
+the resolved absolute CLI command with a command-specific justification. Request
+the harness's normal approval when needed. If host execution is unavailable or
+denied, report that prerequisite and stop; do not silently fall back to the
+sandbox or broaden permissions.
+
 Never query, copy, print, or inject a credential from macOS Keychain or another
 host credential store. The trusted CodeRabbit CLI must access its credential
 directly. A Git worktree or repository change does not require a separate login.
 
 Do not proactively check authentication before every review. Start the requested
-review directly. Only after an explicit authentication error, run
-`coderabbit auth status --agent` in the same authoritative execution context.
-If it reports that authentication is missing, ask the user to run
-`coderabbit auth login --agent` in their host terminal. Do not start the login
-flow automatically; retry the review only after the user confirms login
-succeeded.
+review directly. After a pre-review authentication failure, use this bounded
+recovery sequence:
+
+1. Recognize `status: "credentials_unavailable"` or
+   `status: "callback_listener_unavailable"` as local access failures, not proof
+   that the user is signed out. Older CLIs may instead emit an auth error or
+   `authentication_failed` with `Failed to start server. Is port 0 in use?`.
+   That legacy callback message does not establish a port collision.
+2. Run the trusted CLI's `auth status --agent` through approved host execution.
+   A sandbox's `authenticated: false` is not authoritative for host credentials.
+3. If host status reports `authenticated: true` and the failed review ran in the
+   sandbox, retry the original review once on the host. Preserve its working
+   directory and all review arguments. Never retry a review already running,
+   completed, or failed after remote analysis began. Do not use this recovery for
+   network, rate-limit, billing, or review failures.
+4. If host status reports `authenticated: false`, ask the user to run
+   `coderabbit auth login --agent` in their host terminal. Do not start login
+   automatically; resume the original review only after the user confirms login.
+   If host status itself fails, credentials remain unavailable, or the review
+   already failed on the host, report the exact failure and stop the retry loop.
+
+Structured statuses are additive: do not require an upgrade to recognize the
+legacy failure path, and do not infer missing authentication from an absent
+status field alone.
 
 Codex Cloud and other remote environments cannot reuse a local host credential
 store. In those environments, use only authentication configured inside that
@@ -77,7 +101,7 @@ If any of `AGENTS.md`, `.coderabbit.yaml`, or `CLAUDE.md` exist in the repo root
 - Parse each NDJSON line independently.
 - Collect `finding` events and group them by severity.
 - Ignore `status` events in the user-facing summary.
-- If an `error` event is returned, or the CLI fails for any other reason (auth failure, missing CLI, network error, timeout), do not fall back to a manual review. Report the exact failure and tell the user how to resolve it (e.g. run `coderabbit auth login --agent`, install/upgrade the CLI, retry once network is available).
+- For a pre-review authentication error, apply the bounded recovery above before reporting a terminal failure. For other errors or unsuccessful recovery, report the exact failure and required next step. Do not fall back to a manual review or prescribe login for an unavailable host credential store.
 - Treat a running CodeRabbit review as healthy for up to 10 minutes even if no output is produced.
 - Keep the conversation unchanged during that 10-minute window instead of posting intermediate waiting or polling messages.
 - Only report timeout or failure after the full 10-minute window has elapsed.
