@@ -59,4 +59,3 @@ Codex Cloud and other remote environments cannot reuse a local host credential
 store. In those environments, use only authentication configured inside that
 environment and direct the user to the official CLI documentation when setup is
 required. Never ask the user to paste an API key into the conversation.
-
