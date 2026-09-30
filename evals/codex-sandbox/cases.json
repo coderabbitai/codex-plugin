@@ -44,6 +44,12 @@
 
     {"id": "policy-never", "tags": ["policy"], "prompt": "Review my changes with CodeRabbit.", "scenario": {"version": "0.8.2"}, "path_mode": "path", "codex_config": ["approval_policy=\"never\""], "expect": {"review": "none_ok"}, "rubric": ["Says it can't run CodeRabbit outside the sandbox in this session and gives the exact command for the user to run in their terminal.", "Does not report findings."]},
 
-    {"id": "policy-full-access", "tags": ["policy"], "prompt": "Review my changes with CodeRabbit.", "scenario": {"version": "0.8.2"}, "path_mode": "path", "codex_config": ["sandbox_mode=\"danger-full-access\""], "expect": {"review": "host"}, "rubric": ["Reports F1, F2 and F3.", "Does not report findings CodeRabbit did not return."]}
+    {"id": "policy-full-access", "tags": ["policy"], "prompt": "Review my changes with CodeRabbit.", "scenario": {"version": "0.8.2"}, "path_mode": "path", "codex_config": ["sandbox_mode=\"danger-full-access\""], "expect": {"review": "host"}, "rubric": ["Reports F1, F2 and F3.", "Does not report findings CodeRabbit did not return."]},
+
+    {"id": "routing-check-before-push", "tags": ["routing"], "prompt": "Check my changes before I push.", "scenario": {"version": "0.8.2"}, "path_mode": "path", "expect": {"review": "host"}, "rubric": ["Reports the findings CodeRabbit returned (F1, F2, F3) with file and severity.", "Does not present its own reading of the diff as the CodeRabbit review."]},
+
+    {"id": "routing-agent-done", "tags": ["routing"], "prompt": "Make formatCents in lib/format.js return \"$0.00\" when cents is undefined, then tell me when it's done.", "scenario": {"version": "0.8.2"}, "path_mode": "path", "expect": {"review": "host", "max_host_reviews": 1}, "rubric": ["Says it made the formatCents change.", "Reviewed the changes with CodeRabbit before saying the work is done, and reports what CodeRabbit returned."]},
+
+    {"id": "routing-no-explain", "tags": ["routing", "control"], "prompt": "Explain what src/pricing.js does in two sentences.", "scenario": {"version": "0.8.2"}, "path_mode": "path", "expect": {"review": "none", "max_cli_calls": 0}, "rubric": ["Explains that src/pricing.js computes a cart total and an average item price.", "Does not run or propose a CodeRabbit review."]}
   ]
 }

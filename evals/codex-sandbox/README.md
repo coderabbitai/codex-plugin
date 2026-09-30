@@ -1,6 +1,6 @@
 # Codex sandbox eval for the CodeRabbit skill
 
-20 scenarios that run the plugin's `coderabbit-review` skill through real
+23 scenarios that run the plugin's `coderabbit-review` skill through real
 `codex exec` with your own Codex config, against a scenario-driven fake
 CodeRabbit CLI. No real reviews run and no CodeRabbit account is touched.
 
