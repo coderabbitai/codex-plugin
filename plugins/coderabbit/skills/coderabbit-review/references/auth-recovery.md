@@ -4,24 +4,45 @@
 
 1. Confirm the working directory is inside a git repository.
 2. Resolve the trusted, host-installed `coderabbit` executable from the user's
-   normal shell. Do not use a repository- or workspace-controlled executable,
-   alias, or wrapper. Use the resolved absolute path for all commands below.
-3. Run `coderabbit --version`. If no trusted host installation exists, ask the
-   user to install the CLI from <https://www.coderabbit.ai/cli>. Do not install
-   it automatically. Commands below use `coderabbit` for readability; invoke
-   the resolved absolute path.
+   normal shell. If shell lookup finds nothing, check the installer's default
+   `~/.local/bin/coderabbit` before concluding it is missing. Do not use a
+   repository- or workspace-controlled executable, alias, wrapper, or symlink
+   target. Use the resolved absolute path for all commands below.
+3. Run `coderabbit --version`. If no trusted host installation is found, ask
+   the user for its installed path; if there is none, ask them to install the
+   CLI from <https://www.coderabbit.ai/cli>. Do not install
+   it automatically. A killed process or signature error is an execution
+   failure, not missing authentication. Commands below use `coderabbit` for
+   readability; invoke the resolved absolute path.
+
+Codex Cloud and other remote environments cannot reuse a local host credential
+store, and escalation there does not reach it. In those environments, use only
+the CLI and authentication configured inside that environment and direct the
+user to the official CLI documentation when setup is required. Never ask the
+user to paste an API key into the conversation.
 
 For local Codex sessions (desktop or CLI, including worktrees), execute the
 resolved CodeRabbit CLI with the harness's command-scoped sandbox escalation so
-that exact process runs on the host with network access. Network permission
-alone is insufficient because it does not expose credentials held by the host
-credential store. Apply the same execution context to `coderabbit review` and
-any reactive authentication command. Do not change global sandbox settings or
-run repository-provided commands outside the sandbox.
+that exact process runs on the host with network access. Sandbox network
+permission alone is insufficient because the CLI also needs its host credential
+store and its `~/.coderabbit` state. Apply the same execution context to
+`coderabbit review` and any reactive authentication command. `--version` and
+`--help` need no host access; run them in the sandbox. Do not change global
+sandbox settings or run repository-provided commands outside the sandbox.
 
-When the shell tool exposes `sandbox_permissions`, use `require_escalated` for
-the resolved absolute CLI command with a command-specific justification. Request
-the harness's normal approval when needed. If host execution is unavailable or
+If the session already runs with full access, run the CLI directly. Otherwise,
+when the shell tool exposes `sandbox_permissions`, use `require_escalated` for
+the resolved absolute CLI command with a command-specific justification. Run it
+as one plain command: the resolved path and its arguments, with no environment
+assignments, pipes, redirects, or command substitution. Propose a `prefix_rule`
+of the resolved path plus its subcommand, such as
+`["/path/to/coderabbit", "review"]` or
+`["/path/to/coderabbit", "auth", "status"]`, so the user can choose to allow
+future runs. Never propose a program-only or shell prefix. A saved prefix lets
+matching commands run outside the sandbox in any repository and with any flags,
+including `--use-credits`; say so in the justification. It is not consent for a
+new review or for spending, and managed policy may still ignore it. Request the
+harness's normal approval when needed. If host execution is unavailable or
 denied, report that prerequisite and stop; do not silently fall back to the
 sandbox or broaden permissions.
 
@@ -47,15 +68,12 @@ recovery sequence:
    network, rate-limit, billing, or review failures.
 4. If host status reports `authenticated: false`, ask the user to run
    `coderabbit auth login --agent` in their host terminal. Do not start login
-   automatically; resume the original review only after the user confirms login.
-   If host status itself fails, credentials remain unavailable, or the review
-   already failed on the host, report the exact failure and stop the retry loop.
+   automatically. After the user confirms login, check `auth status --agent` on
+   the host again and resume the original review if it reports authenticated.
+   If host status itself fails or credentials remain unavailable, report the
+   exact failure and stop. Do not blindly retry a review that failed on the host
+   with valid credentials.
 
 Structured statuses are additive: do not require an upgrade to recognize the
 legacy failure path, and do not infer missing authentication from an absent
 status field alone.
-
-Codex Cloud and other remote environments cannot reuse a local host credential
-store. In those environments, use only authentication configured inside that
-environment and direct the user to the official CLI documentation when setup is
-required. Never ask the user to paste an API key into the conversation.
