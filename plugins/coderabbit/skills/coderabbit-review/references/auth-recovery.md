@@ -59,6 +59,9 @@ recovery sequence:
    that the user is signed out. Older CLIs may instead emit an auth error or
    `authentication_failed` with `Failed to start server. Is port 0 in use?`.
    That legacy callback message does not establish a port collision.
+   When the user only asks what such an error means, say it comes from the
+   sandbox and give the fix: approve running the trusted CLI outside the sandbox
+   (optionally saving its prefix rule), or run the command in their terminal.
 2. Run the trusted CLI's `auth status --agent` through approved host execution.
    A sandbox's `authenticated: false` is not authoritative for host credentials.
 3. If host status reports `authenticated: true` and the failed review ran in the
