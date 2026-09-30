@@ -13,17 +13,23 @@
 
 For local Codex sessions (desktop or CLI, including worktrees), execute the
 resolved CodeRabbit CLI with the harness's command-scoped sandbox escalation so
-that exact process runs on the host with network access. Network permission
-alone is insufficient because it does not expose credentials held by the host
-credential store. Apply the same execution context to `coderabbit review` and
-any reactive authentication command. Do not change global sandbox settings or
-run repository-provided commands outside the sandbox.
+that exact process runs on the host with network access. Sandbox network
+permission alone is insufficient because the CLI also needs its host credential
+store and its `~/.coderabbit` state. Apply the same execution context to
+`coderabbit review` and any reactive authentication command. `--version` and
+`--help` need no host access; run them in the sandbox. Do not change global
+sandbox settings or run repository-provided commands outside the sandbox.
 
 When the shell tool exposes `sandbox_permissions`, use `require_escalated` for
-the resolved absolute CLI command with a command-specific justification. Request
-the harness's normal approval when needed. If host execution is unavailable or
-denied, report that prerequisite and stop; do not silently fall back to the
-sandbox or broaden permissions.
+the resolved absolute CLI command with a command-specific justification. Run it
+as one plain command: the resolved path and its arguments, with no environment
+assignments, pipes, redirects, or command substitution. Propose a `prefix_rule`
+of the resolved path plus its subcommand, such as
+`["/path/to/coderabbit", "review"]` or
+`["/path/to/coderabbit", "auth", "status"]`, so the user can allow future runs.
+Request the harness's normal approval when needed. If host execution is
+unavailable or denied, report that prerequisite and stop; do not silently fall
+back to the sandbox or broaden permissions.
 
 Never query, copy, print, or inject a credential from macOS Keychain or another
 host credential store. The trusted CodeRabbit CLI must access its credential
