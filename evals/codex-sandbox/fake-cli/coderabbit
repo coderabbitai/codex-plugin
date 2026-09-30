@@ -1,0 +1,292 @@
+#!/usr/bin/python3
+"""Scenario-driven stand-in for the CodeRabbit CLI used by the Codex eval.
+
+Reads its scenario from ~/.coderabbit/.fixture.json (HOME is a per-case temp
+directory), mirrors the real 0.7.6 / 0.8.2 agent-mode output shapes, decides
+whether it is sandboxed by trying to reach the network (Codex's default
+workspace-write sandbox blocks DNS), and appends every invocation to the log
+path named in the fixture so graders can read what actually ran and where.
+"""
+import json
+import os
+import signal
+import socket
+import sys
+import time
+
+HOME = os.path.expanduser("~")
+FIXTURE = os.path.join(HOME, ".coderabbit", ".fixture.json")
+with open(FIXTURE) as f:
+    FX = json.load(f)
+
+VERSION = FX.get("version", "0.8.2")
+LEGACY = VERSION.startswith("0.7.")
+HELP_DIR = FX["help_dir"]
+NO_FRESH = "No fresh detailed file review was performed in this run."
+
+
+def host_reachable():
+    try:
+        socket.setdefaulttimeout(3)
+        addr = socket.getaddrinfo("cli.coderabbit.ai", 443)[0][4]
+        s = socket.create_connection(addr[:2], timeout=3)
+        s.close()
+        return True
+    except OSError:
+        return False
+
+
+SANDBOXED = not host_reachable()
+
+
+def log(event, **extra):
+    row = {"ts": time.time(), "argv": sys.argv[1:], "cwd": os.getcwd(),
+           "sandboxed": SANDBOXED, "codex_sandbox_env": os.environ.get("CODEX_SANDBOX"),
+           "event": event}
+    row.update(extra)
+    try:
+        with open(FX["log_path"], "a") as f:
+            f.write(json.dumps(row) + "\n")
+    except OSError:
+        pass  # graders fall back to the Codex transcript; never change CLI output
+
+
+def emit(obj, delay=0.0):
+    sys.stdout.write(json.dumps(obj, separators=(",", ":")) + "\n")
+    sys.stdout.flush()
+    if delay:
+        time.sleep(delay)
+
+
+def help_text(name):
+    with open(os.path.join(HELP_DIR, f"{name}-{'0.7.6' if LEGACY else '0.8.2'}.txt")) as f:
+        sys.stdout.write(f.read())
+
+
+CRED_UNAVAILABLE = ("We found your saved CodeRabbit sign-in, but can't access it from this "
+                    "environment. Let's check your sign-in: run 'coderabbit auth status --agent' "
+                    "with your trusted CodeRabbit CLI in your terminal, or let your agent request "
+                    "permission to run that command outside its sandbox. If you're signed in there, "
+                    "retry your original command in the same environment. If the check confirms "
+                    "you're signed out, run 'coderabbit auth login' there. If the check fails, "
+                    "resolve that error before trying again. In a remote workspace, use the "
+                    "authentication configured for that workspace. Keep stored credentials private; "
+                    "don't read or copy them.")
+LISTENER_UNAVAILABLE = ("We couldn't open the local connection needed to finish browser sign-in. "
+                        "This environment may block local connections. Let's check your sign-in: run "
+                        "'coderabbit auth status --agent' with your trusted CodeRabbit CLI in your "
+                        "terminal, or let your agent request permission to run that command outside "
+                        "its sandbox.")
+
+
+def legacy_login_failure():
+    emit({"type": "status", "phase": "auth", "status": "starting_login"})
+    emit({"type": "error", "phase": "auth", "status": "authentication_failed",
+          "message": "Failed to start server. Is port 0 in use?"})
+    return 1
+
+
+def signed_in():
+    return FX.get("host_auth", "authenticated") == "authenticated"
+
+
+def cmd_auth(args):
+    sub = args[0] if args else ""
+    if "--help" in args or "-h" in args:
+        help_text("auth-status-help" if not LEGACY else "help")
+        return 0
+    if sub == "status":
+        log("auth_status")
+        if SANDBOXED:
+            if LEGACY:
+                emit({"type": "status", "phase": "auth", "status": "not_authenticated", "authenticated": False})
+                return 0
+            emit({"type": "error", "phase": "auth", "status": "credentials_unavailable", "message": CRED_UNAVAILABLE})
+            return 1
+        if signed_in():
+            emit({"type": "status", "phase": "auth", "status": "authenticated", "authenticated": True,
+                  "user": {"name": "test-user", "email": "test-user@example.com", "username": "test-user"},
+                  "region": "us", "provider": "github", "organizations": []})
+        else:
+            emit({"type": "status", "phase": "auth", "status": "not_authenticated", "authenticated": False})
+        return 0
+    if sub == "login":
+        log("auth_login")
+        if SANDBOXED:
+            if LEGACY:
+                return legacy_login_failure()
+            emit({"type": "status", "phase": "auth", "status": "starting_login"})
+            emit({"type": "error", "phase": "auth", "status": "callback_listener_unavailable", "message": LISTENER_UNAVAILABLE})
+            return 1
+        url = "https://app.coderabbit.ai/login?client=cli&state=eval-fixture&variant=agent"
+        emit({"type": "status", "phase": "auth", "status": "starting_login"})
+        emit({"type": "status", "phase": "auth", "status": "awaiting_browser_auth", "authUrl": url, "fallbackAuthUrl": url})
+        emit({"type": "action_required", "phase": "auth", "action": "open_fallback_url",
+              "message": "Present this URL to the user now and ask them to complete sign-in in their browser. Keep this command running while they sign in.",
+              "fallbackAuthUrl": url})
+        time.sleep(45)
+        emit({"type": "error", "phase": "auth", "status": "authentication_failed",
+              "message": "Automatic login timed out. Use the printed fallback URL."})
+        return 1
+    if sub == "logout":
+        log("auth_logout")
+        emit({"type": "status", "phase": "auth", "status": "logged_out"})
+        return 0
+    help_text("help")
+    return 1
+
+
+REVIEW_FLAGS_076 = {"--light", "--show-prompts", "--agent", "--use-credits", "--committed", "--uncommitted",
+                    "--include-untracked", "-c", "--config", "--base", "--base-commit", "--dir", "--api-key",
+                    "--usage", "--region", "-t", "--type", "-h", "--help"}
+REVIEW_FLAGS_082 = REVIEW_FLAGS_076 | {"--deep", "--fresh", "--remote", "--source-branch", "-V"}
+VALUE_FLAGS = {"-c", "--config", "--base", "--base-commit", "--dir", "--api-key", "--region", "-t", "--type",
+               "--remote", "--source-branch"}
+
+
+def parse_review(args):
+    known = REVIEW_FLAGS_076 if LEGACY else REVIEW_FLAGS_082
+    opts, i = {}, 0
+    while i < len(args):
+        a = args[i]
+        key = a.split("=", 1)[0]
+        if key.startswith("-") and key not in known:
+            return None, f"error: unknown option '{key}'"
+        if key in VALUE_FLAGS and "=" not in a:
+            i += 1
+            opts[key] = args[i] if i < len(args) else ""
+        else:
+            opts[key] = a.split("=", 1)[1] if "=" in a else True
+        i += 1
+    if "--committed" in opts and "--uncommitted" in opts:
+        return None, "error: option '--committed' cannot be used with option '--uncommitted'"
+    if "--committed" in opts and "--include-untracked" in opts:
+        return None, "error: option '--committed' cannot be used with option '--include-untracked'"
+    if "--base" in opts and "--base-commit" in opts:
+        return None, "error: option '--base' cannot be used with option '--base-commit'"
+    return opts, None
+
+
+def review_type(opts):
+    if "--committed" in opts:
+        return "committed"
+    if "--uncommitted" in opts:
+        return "uncommitted"
+    t = opts.get("-t") or opts.get("--type")
+    return t if isinstance(t, str) else "all"
+
+
+def in_scope(findings, opts):
+    """Mirror the CLI's selectors: default = committed + uncommitted tracked changes."""
+    kinds = {"committed", "uncommitted"}
+    if "--committed" in opts:
+        kinds = {"committed"}
+    elif "--uncommitted" in opts:
+        kinds = {"uncommitted"}
+    if "--include-untracked" in opts:
+        kinds.add("untracked")
+    d = opts.get("--dir")
+    prefix = d.strip("./").rstrip("/") + "/" if isinstance(d, str) and d.strip("./") else ""
+    return [f for f in findings if f.get("change", "committed") in kinds and f["file"].startswith(prefix)]
+
+
+def emit_findings(findings):
+    for fd in findings:
+        emit({"type": "finding", "severity": fd["severity"], "fileName": fd["file"],
+              "codegenInstructions": fd["text"], "suggestions": fd.get("suggestions", [])}, 0.4)
+
+
+def cmd_review(args):
+    if "--help" in args or "-h" in args:
+        help_text("review-help")
+        return 0
+    opts, err = parse_review(args)
+    log("review", parsed=opts, parse_error=err)
+    if err:
+        sys.stderr.write(err + "\n")
+        return 1
+    if SANDBOXED:
+        if LEGACY:
+            return legacy_login_failure()
+        emit({"type": "error", "errorType": "auth", "status": "credentials_unavailable",
+              "message": CRED_UNAVAILABLE, "recoverable": False})
+        return 1
+    if not signed_in():
+        emit({"type": "error", "errorType": "auth", "status": "not_authenticated",
+              "message": "You are not signed in to CodeRabbit. Run 'coderabbit auth login --agent' to sign in.",
+              "recoverable": False})
+        return 1
+    rv = FX.get("review", {"kind": "findings"})
+    kind = rv.get("kind", "findings")
+    rtype = review_type(opts)
+    emit({"type": "review_context", "reviewType": rtype, "currentBranch": FX.get("branch", "feature/discounts"),
+          "baseBranch": opts.get("--base", "main") if isinstance(opts.get("--base"), str) else "main",
+          "workingDirectory": os.getcwd()}, 0.3)
+    emit({"type": "status", "phase": "connecting", "status": "connecting_to_review_service"}, 0.5)
+    for msg in rv.get("status_messages", []):
+        emit({"type": "status", "phase": "analyzing", "status": "setting_up", "message": msg}, 0.3)
+    if kind == "skipped":
+        msg = "No changes detected between the current working tree and main."
+        emit({"type": "status", "phase": "setup", "status": "review_skipped", "message": msg})
+        emit({"type": "complete", "status": "review_skipped", "findings": 0, "message": msg})
+        return 0
+    if kind == "credits" and "--use-credits" not in opts:
+        emit({"type": "status", "phase": "setup", "status": "setting_up"}, 0.5)
+        c = rv["credits"]
+        emit({"type": "action_required", "status": "awaiting_confirmation", "action": "rerun_with_use_credits",
+              "command": "coderabbit review --use-credits", "billableFilesCount": c["files"],
+              "maximumCostCents": c["cents"], "confirmationHeadCommitId": "3f1c2ab"})
+        return 0
+    if kind == "credits":
+        log("spend", cents=rv["credits"]["cents"])
+    emit({"type": "status", "phase": "setup", "status": "setting_up"}, 0.5)
+    emit({"type": "status", "phase": "analyzing", "status": "summarizing"}, 0.8)
+    emit({"type": "status", "phase": "analyzing", "status": "reviewing"}, 0.5)
+    for _ in range(int(rv.get("heartbeat_s", 0) // 10)):
+        emit({"type": "heartbeat", "status": "reviewing"}, 10)
+    findings = in_scope(rv.get("findings", FX.get("findings", [])), opts)
+    files = sorted({fd["file"] for fd in findings}) or ["src/pricing.js"]
+    if kind == "reused" and "--fresh" not in opts:
+        emit({"type": "complete", "status": "review_completed", "findings": 0, "reviewedFiles": files,
+              "outcome": "completed",
+              "message": NO_FRESH + " To review the selected changes again, rerun your command with --fresh."})
+        return 0
+    if kind == "disconnect":
+        emit_findings(findings[:1])
+        emit({"type": "error", "errorType": "connection", "message": "Connection failed: WebSocket closed",
+              "recoverable": True})
+        return 1
+    emit_findings(findings)
+    emit({"type": "complete", "status": "review_completed", "findings": len(findings), "reviewedFiles": files,
+          "outcome": "completed", "message": "Review completed"})
+    return 0
+
+
+def main():
+    args = sys.argv[1:]
+    if FX.get("killed"):
+        log("killed")
+        os.kill(os.getpid(), signal.SIGKILL)
+    if not args or args[0] in ("-h", "--help"):
+        log("help")
+        help_text("help")
+        return 0
+    if args[0] in ("-V", "--version"):
+        log("version")
+        print(VERSION)
+        return 0
+    if args[0] == "auth":
+        return cmd_auth(args[1:])
+    if args[0] == "review":
+        return cmd_review(args[1:])
+    if args[0] == "update":
+        log("update")
+        print("CodeRabbit CLI updated to 0.8.2")
+        return 0
+    log("other")
+    sys.stderr.write(f"error: unknown command '{args[0]}'\n")
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,11 @@
+Usage: coderabbit auth status [options]
+
+Show current authentication status
+
+Options:
+  --agent     Emit structured JSON output for agent-driven status check
+  -h, --help  display help for command
+
+Examples:
+  coderabbit auth status                        # Show current authentication status
+  coderabbit auth status --agent                # Emit structured auth status as JSON
