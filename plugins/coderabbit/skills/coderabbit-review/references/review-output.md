@@ -1,5 +1,10 @@
 # Review output and spending consent
 
+Keep nonblocking account or tier notices in the final result instead of
+interrupting an active review with them. Surface them immediately only when
+the review cannot proceed or the user must make a decision, such as authorizing
+credit use. Preserve the notice in the final result even when there are no findings.
+
 ## Interpret saved output
 
 Separate what was observed from what is unknown:
