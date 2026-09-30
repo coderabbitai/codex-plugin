@@ -34,8 +34,9 @@ If the session already runs with full access, run the CLI directly. Otherwise,
 when the shell tool exposes `sandbox_permissions`, use `require_escalated` for
 the resolved absolute CLI command with a command-specific justification. Run it
 as one plain command: the resolved path and its arguments, with no environment
-assignments, pipes, redirects, or command substitution. Propose a `prefix_rule`
-of the resolved path plus its subcommand, such as
+assignments, pipes, redirects, or command substitution. Default to one-time
+approval: omit `prefix_rule` unless the user asks to allow future runs. When
+requested, propose a `prefix_rule` of the resolved path plus its subcommand, such as
 `["/path/to/coderabbit", "review"]` or
 `["/path/to/coderabbit", "auth", "status"]`, so the user can choose to allow
 future runs. Never propose a program-only or shell prefix. A saved prefix lets
