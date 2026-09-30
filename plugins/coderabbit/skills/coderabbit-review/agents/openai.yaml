@@ -4,4 +4,4 @@ interface:
   icon_small: "../../assets/coderabbit-small.png"
   icon_large: "../../assets/coderabbit.png"
   brand_color: "#FF570A"
-  default_prompt: "Use $coderabbit:code-review to review the current diff, summarize the findings, and suggest concrete follow-up fixes."
+  default_prompt: "Use $coderabbit:coderabbit-review to review the current diff, summarize the findings, and suggest concrete follow-up fixes."
