@@ -1,0 +1,45 @@
+Usage: coderabbit review [options] [command]
+
+AI-driven code review for the current git repository
+
+Options:
+  -V, --version            output the version number
+  --light                  Run a lighter review with reduced context work
+  --show-prompts           Print AI prompts without starting a new review
+  --agent                  Emit structured findings for agent workflows
+  --use-credits            Use usage credits if this review exceeds included
+                           limits
+  --committed              Review only committed changes
+  --uncommitted            Review staged changes and tracked edits
+  --include-untracked      Also review files that have not been added to Git
+  -c, --config <files...>  Additional instructions for CodeRabbit AI (e.g.,
+                           claude.md, coderabbit.yaml)
+  --base <branch>          Base branch for comparison
+  --base-commit <commit>   Base commit on current branch for comparison
+  --dir <path>             Review only git changes inside this directory
+  --api-key <key>          API key for authentication
+  --usage                  Show current billing period usage instead of
+                           reviewing (alias of `coderabbit usage`)
+  --region <region>        Region for inline API key authentication (choices:
+                           "us", "eu")
+  -h, --help               display help for command
+
+Commands:
+  findings [options]       Show findings from the previous local review
+
+Examples:
+  coderabbit review                           # Review tracked changes
+  coderabbit review --committed               # Review only committed changes
+  coderabbit review --uncommitted             # Review staged changes and tracked edits
+  coderabbit review --include-untracked       # Also review files not added to Git
+  coderabbit review --agent                   # Emit structured findings for agents
+  coderabbit review --light                   # Run a lighter review with reduced context work
+  coderabbit review --show-prompts             # Print prompts from the latest local review
+  coderabbit review --base main               # Compare current branch against main
+  coderabbit review --dir /path/to/repo       # Review only git changes inside that directory
+  coderabbit review --region eu --api-key <key> # Review with an EU API key without storing it
+  coderabbit review findings                  # Show previous local review findings
+
+Notes:
+  Plain text is the default review mode.
+  Use coderabbit auth login --agent for agent-driven OAuth login.

@@ -1,0 +1,34 @@
+Usage: coderabbit [options] [command]
+
+CodeRabbit CLI for code review and cloud coding.
+
+Modes:
+  --agent                                 Emit structured findings for agents
+  (default)                               Plain-text review of tracked changes
+
+Commands:
+  auth                                   Manage authentication
+  review [options]                       Review local changes
+  pullrequest [options] <number-or-url>  Inspect a CodeRabbit-reviewed GitHub pull request
+  stats [options]                        Show review statistics
+  usage [options]                        Show included-review availability and billing-period usage
+  update                                 Update CodeRabbit CLI to the latest version
+  config [options]                       Create or configure CodeRabbit configuration
+  doctor                                 Check CodeRabbit CLI installation and local review readiness
+  skills [options]                       Install or update CodeRabbit agent skills
+  code                                   Work with the CodeRabbit cloud Coding Agent
+  help [command]                         display help for command
+
+Common usage:
+  coderabbit review
+  coderabbit review findings
+  coderabbit pullrequest <url> --show-prompts
+  coderabbit auth login
+  coderabbit config
+  coderabbit doctor
+  coderabbit skills
+  coderabbit code handoff --summary <path|->
+  coderabbit code skills import [path]
+  coderabbit stats
+  coderabbit usage
+  coderabbit update
