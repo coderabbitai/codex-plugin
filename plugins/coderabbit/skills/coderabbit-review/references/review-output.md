@@ -16,7 +16,7 @@ Separate what was observed from what is unknown:
 | Completion with exit 1, failed outcome, or unreviewed files | The process reported an end state, but the review failed or has incomplete coverage. |
 | Exit 0, completed with warnings, zero unreviewed files | Completed coverage; report any findings and warnings. Warnings alone do not imply failure. |
 | Successful no-change skip | Nothing was reviewed; this is not an analyzed-clean result. |
-| Completed, but the message says no fresh detailed file review was performed | The CLI reused an earlier review. Zero findings does not mean clean, and earlier findings still stand. If the user wants a new review, check `review --help` for `--fresh`; running it is another review. |
+| Completed, but the message says no fresh detailed file review was performed | The CLI reused an earlier review. Zero findings does not mean clean, and earlier findings still stand. Offer a fresh review with `--fresh` (check `review --help`) and ask before running it, since it is another review. |
 
 A terminal event and a successful, fully covered review are different claims. Do not infer either from a heartbeat or the absence of findings.
 
