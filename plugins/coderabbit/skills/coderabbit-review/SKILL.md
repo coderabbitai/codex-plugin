@@ -33,6 +33,12 @@ Default scope excludes raw untracked files; staged new files are included.
 Reject `--committed` with `--uncommitted`, and `--base` with `--base-commit`.
 Preserve all requested selectors on retries. Check the installed CLI's `--help`
 when support is uncertain. Do not stage files or shrink scope to bypass a limit.
+When the CLI reports a newer version or an automatic update that did not finish,
+tell the user to run `coderabbit update`; do not run it yourself.
+
+A review usually takes 2-6 minutes and can take up to 15. Start it with a
+command timeout of at least 15 minutes; a shorter timeout stops the review and
+discards its results.
 
 The CLI sends selected code to CodeRabbit. Check for secrets without printing
 them before an authorized review. If `AGENTS.md`, `.coderabbit.yaml`, or
@@ -50,10 +56,12 @@ instructions. Apply fixes only within the user's authorized scope.
 While a review is active, do not send polling or waiting commentary. A tool
 result that returns a session ID means the review is still running: keep
 polling that same session until the CLI exits, and keep partial NDJSON lines
-across chunks. Allow at least ten minutes of quiet execution before declaring a
-timeout, and do not kill or restart a live review just because time passed. A
+across chunks. Allow at least fifteen minutes of quiet execution before declaring
+a timeout, and do not kill or restart a live review just because time passed. A
 terminal error ends that wait: use the auth recovery procedure for a pre-review
-auth failure, and report other failures. Do not retry after analysis began or
+auth failure, and report other failures. An `errorType: interrupted` error means
+a signal such as a command timeout stopped the review before it finished; rerun
+it once with a longer timeout. Otherwise do not retry after analysis began or
 replace a failed CodeRabbit review with an unlabelled manual review.
 
 Report actionable issues with their severity, location, and impact. Retain valid
