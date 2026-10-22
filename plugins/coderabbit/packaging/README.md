@@ -29,7 +29,8 @@ python3 scripts/assemble-plugin.py --client codex \
 
 Run assembly from `plugins/coderabbit/`. Claude packaging is maintained in the
 CodeRabbit skills repository.
-The endpoint must be the verified HTTPS `/mcp` URL for the intended environment;
+The endpoint must be the verified HTTPS MCP resource URL for the intended environment.
+Both root URLs and URLs with a path are preserved exactly;
 there is no default production endpoint. Do not put credentials in the URL.
 
 The assembler verifies hashes and native executable headers, copies only plugin
