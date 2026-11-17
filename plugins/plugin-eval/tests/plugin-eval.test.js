@@ -297,6 +297,33 @@ test("init-benchmark writes a beginner-friendly starter config", async () => {
   assert.ok(payload.workflowGuide);
 });
 
+test("benchmark requires explicit selection before reading target-provided config", async (t) => {
+  const tempDir = await makeTempDir("plugin-eval-benchmark-config-trust");
+  t.after(() => fs.rm(tempDir, { recursive: true, force: true }));
+  const skillPath = path.join(tempDir, "minimal-skill");
+  await copyDirectory(path.join(fixturesRoot, "minimal-skill"), skillPath);
+  const { configPath } = await initializeBenchmark(skillPath);
+  const config = JSON.parse(await fs.readFile(configPath, "utf8"));
+  config.verifiers.commands = ["echo synthetic-target-verifier"];
+  const calls = [];
+  // Neither executable settings nor invalid JSON from the target may be read
+  // before explicit selection; refusal must precede all subprocesses/artifacts.
+  for (const document of [JSON.stringify(config), "unreviewed target configuration"]) {
+    await fs.writeFile(configPath, document, "utf8");
+    await assert.rejects(
+      runBenchmark(skillPath, {
+        processRunner: async ({ kind }) => {
+          calls.push(kind);
+          throw new Error("Unexpected process request");
+        },
+      }),
+      /review.*--config/i,
+    );
+  }
+  assert.deepEqual(calls, []);
+  assert.deepEqual(await fs.readdir(path.join(skillPath, ".plugin-eval")), ["benchmark.json"]);
+});
+
 test("benchmark rejects the removed dry-run mode", async () => {
   const sourcePath = path.join(fixturesRoot, "minimal-skill");
   const tempDir = await makeTempDir("plugin-eval-benchmark-dry-run");
@@ -363,10 +390,14 @@ test("benchmark run writes usage logs and generated-code analysis from a codex-c
   const skillPath = path.join(tempDir, "minimal-skill");
   await copyDirectory(sourcePath, skillPath);
 
-  await initializeBenchmark(skillPath);
+  const { configPath } = await initializeBenchmark(skillPath);
+  const config = JSON.parse(await fs.readFile(configPath, "utf8"));
+  config.verifiers.commands = ["echo synthetic-verifier"];
+  await fs.writeFile(configPath, JSON.stringify(config), "utf8");
+  const verifierCommands = [];
   const payload = await runBenchmark(skillPath, {
     configPath: path.join(skillPath, ".plugin-eval", "benchmark.json"),
-    processRunner: async ({ kind, args }) => {
+    processRunner: async ({ kind, command, args }) => {
       if (kind === "codex-version") {
         return {
           code: 0,
@@ -397,6 +428,7 @@ test("benchmark run writes usage logs and generated-code analysis from a codex-c
         };
       }
 
+      if (kind === "verifier") verifierCommands.push({ command, args });
       return {
         code: 0,
         signal: null,
@@ -412,6 +444,10 @@ test("benchmark run writes usage logs and generated-code analysis from a codex-c
   assert.equal(payload.summary.generatedFileCount, 6);
   assert.equal(payload.summary.generatedTestFileCount, 3);
   assert.equal(payload.scenarios[0].generatedCode.metrics.find((metric) => metric.id === "ts_file_count")?.value, 2);
+  assert.deepEqual(verifierCommands, Array.from({ length: 3 }, () => ({
+    command: "/bin/zsh",
+    args: ["-lc", "echo synthetic-verifier"],
+  })));
 
   const result = await analyzePath(skillPath, {
     observedUsagePaths: [payload.usageLogPath],
@@ -641,7 +677,7 @@ test("CLI init-benchmark and benchmark commands work together with a fake codex 
 
   const run = await execFileAsync(
     nodeBin,
-    [cliPath, "benchmark", skillPath, "--format", "markdown"],
+    [cliPath, "benchmark", skillPath, "--config", path.join(skillPath, ".plugin-eval", "benchmark.json"), "--format", "markdown"],
     {
       cwd: repoRoot,
       env: {

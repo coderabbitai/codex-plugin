@@ -96,7 +96,7 @@ plugin-eval analyze <path> --format markdown
 plugin-eval explain-budget <path> --format markdown
 plugin-eval measurement-plan <path> --format markdown
 plugin-eval init-benchmark <path>
-plugin-eval benchmark <path> --format markdown
+plugin-eval benchmark <path> --config <path>/.plugin-eval/benchmark.json --format markdown
 plugin-eval report <result.json> --format markdown
 plugin-eval compare <before.json> <after.json> --format markdown
 ```
@@ -126,6 +126,7 @@ Compatibility aliases still work:
 - `init-benchmark` creates starter benchmark configuration under `.plugin-eval/` for the target you choose.
 - `benchmark` runs a live local Codex CLI workflow in an isolated temp workspace and writes artifacts under `.plugin-eval/`.
 - Review the generated benchmark configuration before running it, especially when the target project or prompts did not come from you.
+- Existing target-provided benchmark configs require explicit selection with `--config`; they are never loaded automatically. Review the entire file: it controls runner arguments, workspace setup and verifier commands. Verifiers execute as your user on the host, outside the Codex sandbox.
 - Keep generated `.plugin-eval/` artifacts and local `node_modules/` directories out of commits unless you explicitly want to version them.
 
 ## How It Works As A Codex Plugin

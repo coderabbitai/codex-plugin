@@ -227,12 +227,9 @@ async function loadBenchmarkConfig(target, options = {}) {
 
   const defaultConfigPath = defaultBenchmarkConfigPath(target);
   if (await pathExists(defaultConfigPath)) {
-    const config = await readJson(defaultConfigPath);
-    return {
-      config: normalizeConfig(config, target),
-      configPath: defaultConfigPath,
-      source: "file",
-    };
+    throw new Error(
+      `Review the target-provided benchmark configuration before running it, then select it explicitly with --config ${formatCommandPath(defaultConfigPath)}. Benchmark verifiers execute on your host, outside the Codex sandbox.`,
+    );
   }
 
   const generated = await createStarterBenchmarkConfig(target, options);

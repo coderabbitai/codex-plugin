@@ -58,9 +58,12 @@ plugin-eval analyze <path> --format markdown
 plugin-eval explain-budget <path> --format markdown
 plugin-eval measurement-plan <path> --format markdown
 plugin-eval init-benchmark <path>
-plugin-eval benchmark <path> --dry-run
-plugin-eval benchmark <path>
+plugin-eval benchmark <path> --config <path>/.plugin-eval/benchmark.json
 ```
+
+Review the selected benchmark config before running it. It controls runner arguments,
+workspace setup, and verifier commands, which execute on the operator's host outside
+the Codex sandbox. Target-provided configs require explicit `--config` selection.
 
 ## Output Expectations
 
