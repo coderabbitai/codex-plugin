@@ -156,10 +156,11 @@ export function createBudgetNextAction(payload) {
 export function createBenchmarkTemplateNextAction(payload) {
   const commandTargetPath = formatCommandPath(payload.target.path);
   const commandConfigPath = formatCommandPath(payload.configPath);
+  const workspaceArg = payload.workspaceSourcePath ? ` --workspace ${formatCommandPath(payload.workspaceSourcePath)}` : "";
   return {
     label: "Run the Codex benchmark",
-    why: "Benchmarking now means a real codex exec run, so the next step is to execute the edited scenarios in an isolated workspace.",
-    command: `plugin-eval benchmark ${commandTargetPath} --config ${commandConfigPath} --format markdown`,
+    why: "Review the scenarios and workspace path before starting a real codex exec run.",
+    command: `plugin-eval benchmark ${commandTargetPath} --config ${commandConfigPath}${workspaceArg} --format markdown`,
     chatPrompt: `Help me benchmark this ${targetLabel(payload.target)}.`,
   };
 }

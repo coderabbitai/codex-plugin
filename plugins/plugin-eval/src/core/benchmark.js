@@ -62,7 +62,7 @@ function normalizeScenario(scenario, index) {
   };
 }
 
-function normalizeConfig(config, target) {
+async function normalizeConfig(config, target, options = {}) {
   if (config?.schemaVersion === 1 || config?.harnessPrompt || config?.baseUrl || config?.apiKeyEnv) {
     throw new Error(
       "Legacy Responses-style benchmark configs are no longer supported. Re-run `plugin-eval init-benchmark <path>` to generate a CLI-only Codex benchmark config.",
@@ -83,15 +83,50 @@ function normalizeConfig(config, target) {
     throw new Error("Benchmark runner.type must be \"codex-cli\".");
   }
 
-  if (!config.workspace?.sourcePath) {
-    throw new Error("Benchmark config must set workspace.sourcePath.");
+  if (!config.workspace || typeof config.workspace.sourcePath !== "string" || !config.workspace.sourcePath) {
+    throw new Error("Benchmark config must set workspace.sourcePath to a directory path.");
   }
 
   if (!config.targetProvisioning?.mode) {
     throw new Error("Benchmark config must set targetProvisioning.mode.");
   }
 
-  return config;
+  // The target can supply scenarios, but it cannot choose additional host access.
+  const sourcePath = await fs.realpath(path.resolve(options.sourcePath || process.cwd()));
+  const configuredSourcePath = await fs.realpath(path.resolve(config.workspace.sourcePath));
+  if (configuredSourcePath !== sourcePath) {
+    throw new Error("workspace.sourcePath does not match the operator-selected workspace. Review the path and pass --workspace <directory> explicitly.");
+  }
+  if (!["copy", "git-worktree"].includes(config.workspace.setupMode || "copy")) {
+    throw new Error("Benchmark workspace.setupMode must be copy or git-worktree.");
+  }
+  if (!["read-only", "workspace-write"].includes(config.runner.sandbox || "workspace-write")) {
+    throw new Error("Benchmark runner.sandbox must be read-only or workspace-write.");
+  }
+  if (!["never", "untrusted", "on-request"].includes(config.runner.approvalPolicy || "never")) {
+    throw new Error("Unsupported benchmark runner.approvalPolicy.");
+  }
+  if (config.runner.extraArgs !== undefined &&
+      (!Array.isArray(config.runner.extraArgs) || config.runner.extraArgs.length !== 0)) {
+    throw new Error("Benchmark runner.extraArgs must be empty. Arbitrary Codex arguments are not supported.");
+  }
+  const commands = config.verifiers?.commands ?? [];
+  if (!Array.isArray(commands) || commands.some((command) => typeof command !== "string" || !command.trim())) {
+    throw new Error("Benchmark verifiers.commands must be an array of non-empty strings.");
+  }
+  if (commands.length > 0 && options.allowVerifiers !== true) {
+    throw new Error("Verifier commands execute in the host shell outside the Codex sandbox. Review them and pass --allow-verifiers to authorize execution.");
+  }
+  const model = options.model || config.runner.model || defaultModelForTarget(target);
+  if (typeof model !== "string" || model.startsWith("-") || model.includes("\0")) {
+    throw new Error("Benchmark model must be a model name, not a CLI option.");
+  }
+  if (!Array.isArray(config.scenarios) || config.scenarios.some((scenario) =>
+    !scenario || typeof scenario.userInput !== "string")) {
+    throw new Error("Benchmark scenarios must contain string userInput values.");
+  }
+
+  return { ...config, workspace: { ...config.workspace, sourcePath } };
 }
 
 function buildSetupQuestions(target) {
@@ -206,7 +241,7 @@ async function createStarterBenchmarkConfig(target, options = {}) {
       commands: [],
     },
     notes: [
-      "Edit workspace.sourcePath so it points at the repo or template you want Codex to work inside.",
+      "Edit workspace.sourcePath and pass the same directory with --workspace when running the benchmark (defaults to the current directory).",
       "Edit the scenarios so they match real tasks instead of generic starter prompts.",
       "Benchmark means real codex exec runs now. There is no simulated dry-run mode.",
     ],
@@ -219,7 +254,7 @@ async function loadBenchmarkConfig(target, options = {}) {
   if (options.configPath) {
     const config = readJson(path.resolve(options.configPath));
     return {
-      config: normalizeConfig(await config, target),
+      config: await normalizeConfig(await config, target, options),
       configPath: path.resolve(options.configPath),
       source: "file",
     };
@@ -227,17 +262,12 @@ async function loadBenchmarkConfig(target, options = {}) {
 
   const defaultConfigPath = defaultBenchmarkConfigPath(target);
   if (await pathExists(defaultConfigPath)) {
-    const config = await readJson(defaultConfigPath);
-    return {
-      config: normalizeConfig(config, target),
-      configPath: defaultConfigPath,
-      source: "file",
-    };
+    throw new Error("A target-owned benchmark config exists. Review it, then select it explicitly with --config <benchmark.json>.");
   }
 
   const generated = await createStarterBenchmarkConfig(target, options);
   return {
-    config: generated,
+    config: await normalizeConfig(generated, target, options),
     configPath: null,
     source: "generated",
   };
@@ -337,7 +367,7 @@ function buildCodexExecArgs({
     `approval_policy=${tomlString(config.runner.approvalPolicy || "never")}`,
     "-m",
     model,
-    ...(Array.isArray(config.runner.extraArgs) ? config.runner.extraArgs : []),
+    "--",
     prompt,
   ];
 }
@@ -384,7 +414,7 @@ async function runVerifierCommands({ commands, cwd, processRunner, basePath }) {
     const outcome = await processRunner({
       kind: "verifier",
       command: "/bin/zsh",
-      args: ["-lc", command],
+      args: ["-f", "-c", command],
       cwd,
       env: process.env,
       stdoutPath,
@@ -464,12 +494,13 @@ export async function initializeBenchmark(targetPath, options = {}) {
       relativePath: relativePath(process.cwd(), target.path),
     },
     configPath: outputPath,
+    workspaceSourcePath: config.workspace.sourcePath,
     scenarioCount: config.scenarios.length,
     notes: config.notes,
     setupQuestions: config.setupQuestions || [],
     nextSteps: [
       `Edit ${formatCommandPath(outputPath)} so workspace.sourcePath, scenarios, and verifiers match your real workflow.`,
-      `Run the benchmark with: plugin-eval benchmark ${formatCommandPath(target.path)} --config ${formatCommandPath(outputPath)}`,
+      `Run the benchmark with: plugin-eval benchmark ${formatCommandPath(target.path)} --config ${formatCommandPath(outputPath)} --workspace ${formatCommandPath(config.workspace.sourcePath)}`,
       "The benchmark result will be written under .plugin-eval/runs/<timestamp>/benchmark-run.json.",
     ],
     workflowGuide: await buildWorkflowGuide(target.path, {

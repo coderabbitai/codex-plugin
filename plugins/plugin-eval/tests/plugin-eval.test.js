@@ -641,7 +641,7 @@ test("CLI init-benchmark and benchmark commands work together with a fake codex 
 
   const run = await execFileAsync(
     nodeBin,
-    [cliPath, "benchmark", skillPath, "--format", "markdown"],
+    [cliPath, "benchmark", skillPath, "--config", path.join(skillPath, ".plugin-eval", "benchmark.json"), "--format", "markdown"],
     {
       cwd: repoRoot,
       env: {

@@ -14,7 +14,7 @@ Use this skill when the target is a plugin root with `.codex-plugin/plugin.json`
 3. Run `plugin-eval analyze <plugin-root> --format markdown`.
 4. Read `Fix First` before drilling into manifest findings, nested skill findings, and code or coverage details.
 5. If the plugin contains multiple skills, summarize the strongest and weakest ones explicitly.
-6. If the user wants measured usage, switch to "Help me benchmark this plugin." and use the starter benchmark flow.
+6. If the user wants measured usage, read [Benchmark Harness](../../references/benchmark-harness.md) and use the starter benchmark flow with a workspace selected from the user's task and reviewed configuration.
 7. If the user wants trend data, compare two JSON outputs with `plugin-eval compare`.
 
 ## Chat Requests To Recognize
@@ -35,7 +35,7 @@ plugin-eval start <plugin-root> --request "What should I run next?" --format mar
 plugin-eval compare before.json after.json
 plugin-eval report result.json --format html --output ./plugin-eval-report.html
 plugin-eval init-benchmark <plugin-root>
-plugin-eval benchmark <plugin-root> --dry-run
+plugin-eval benchmark <plugin-root> --config <reviewed-config> --workspace <operator-selected-workspace>
 ```
 
 ## Reference

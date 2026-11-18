@@ -16,7 +16,7 @@ Use this skill when the target is a local skill directory or `SKILL.md` file.
 5. Review `At a Glance`, `Why It Matters`, `Fix First`, and `Recommended Next Step` before drilling into details.
 6. Explain which findings are structural, which are budget-related, and which are code-related.
 7. If the user asks for an "analysis" of the skill, do not stop at the report. Also run `plugin-eval init-benchmark <skill-path>` and show the setup questions for refining the starter scenarios in `.plugin-eval/benchmark.json`.
-8. If the user wants real usage numbers, switch to "Measure the real token usage of this skill." and run the benchmark flow.
+8. If the user wants real usage numbers, read [Benchmark Harness](../../references/benchmark-harness.md) and run the benchmark flow using a workspace selected from the user's task and reviewed configuration.
 9. After observed usage is available, use `plugin-eval measurement-plan <skill-path> --observed-usage <usage.jsonl> --format markdown` to recommend what to instrument or improve next.
 10. If the user wants a rewrite plan, route to `../improve-skill/SKILL.md`.
 
@@ -46,7 +46,7 @@ plugin-eval analyze <skill-path> --format markdown
 plugin-eval explain-budget <skill-path> --format markdown
 plugin-eval measurement-plan <skill-path> --format markdown
 plugin-eval init-benchmark <skill-path>
-plugin-eval benchmark <skill-path> --dry-run
+plugin-eval benchmark <skill-path> --config <reviewed-config> --workspace <operator-selected-workspace>
 ```
 
 ## Reference

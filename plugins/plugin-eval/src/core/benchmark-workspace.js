@@ -9,6 +9,20 @@ import { isProbablyTextFile, isDirectory, readText, relativePath } from "../lib/
 
 const execFileAsync = promisify(execFile);
 
+async function runWorkspaceGit(sourcePath, args) {
+  // Repository operations must not inherit caller-supplied Git config overrides
+  // or execute hooks/fsmonitor programs from the repository being evaluated.
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+  env.GIT_CONFIG_NOSYSTEM = "1";
+  env.GIT_CONFIG_GLOBAL = os.devNull;
+  return execFileAsync("git", [
+    "-c", `core.hooksPath=${os.devNull}`,
+    "-c", "core.fsmonitor=false",
+    "-C", sourcePath,
+    ...args,
+  ], { env });
+}
+
 const SNAPSHOT_IGNORED_DIRS = new Set([
   ".git",
   "node_modules",
@@ -47,7 +61,7 @@ async function copyIfExists(sourcePath, destinationPath) {
 }
 
 async function resolveGitRoot(sourcePath) {
-  const { stdout } = await execFileAsync("git", ["-C", sourcePath, "rev-parse", "--show-toplevel"]);
+  const { stdout } = await runWorkspaceGit(sourcePath, ["rev-parse", "--show-toplevel"]);
   return stdout.trim();
 }
 
@@ -63,11 +77,34 @@ async function createWorkspaceCopy(sourcePath, workspacePath) {
 
 async function createWorkspaceFromGitWorktree(sourcePath, workspacePath) {
   const repoRoot = await resolveGitRoot(sourcePath);
-  await execFileAsync("git", ["-C", repoRoot, "worktree", "add", "--detach", workspacePath]);
+  if (await fs.realpath(repoRoot) !== await fs.realpath(sourcePath)) {
+    throw new Error("git-worktree requires --workspace to select the repository root, not a subdirectory.");
+  }
+  // Create metadata first so conditional includes are evaluated in the NEW
+  // worktree, where checkout will occur, before disabling executable filters.
+  await runWorkspaceGit(repoRoot, ["worktree", "add", "--detach", "--no-checkout", workspacePath]);
+  try {
+    let filterKeys = [];
+    try {
+      const { stdout } = await runWorkspaceGit(workspacePath, [
+        "config", "--null", "--name-only", "--get-regexp", "^filter\\..*\\.(smudge|process|required)$",
+      ]);
+      filterKeys = stdout.split("\0").filter(Boolean);
+    } catch (error) {
+      if (error.code !== 1) {
+        throw error;
+      }
+    }
+    const filterOverrides = filterKeys.flatMap((key) => ["-c", `${key}=${key.endsWith(".required") ? "false" : ""}`]);
+    await runWorkspaceGit(workspacePath, [...filterOverrides, "reset", "--hard", "--no-recurse-submodules", "HEAD"]);
+  } catch (error) {
+    await runWorkspaceGit(repoRoot, ["worktree", "remove", "--force", workspacePath]);
+    throw error;
+  }
   return {
     workspacePath,
     cleanup: async () => {
-      await execFileAsync("git", ["-C", repoRoot, "worktree", "remove", "--force", workspacePath]);
+      await runWorkspaceGit(repoRoot, ["worktree", "remove", "--force", workspacePath]);
     },
   };
 }
@@ -144,20 +181,28 @@ export async function provisionBenchmarkWorkspace({ target, config, scenarioId }
   const codexHomePath = path.join(homePath, ".codex");
   const setupMode = config.workspace.setupMode || "copy";
 
-  await seedCodexHome(codexHomePath);
-
-  const workspace =
-    setupMode === "git-worktree"
+  let workspace;
+  let installedTargetPath = null;
+  try {
+    workspace = setupMode === "git-worktree"
       ? await createWorkspaceFromGitWorktree(sourcePath, workspacePath)
       : await createWorkspaceCopy(sourcePath, workspacePath);
+    await seedCodexHome(codexHomePath);
 
-  let installedTargetPath = null;
-  if (config.targetProvisioning.mode === "isolated-skill-home") {
-    installedTargetPath = await provisionSkillInstall(target, codexHomePath);
-  } else if (config.targetProvisioning.mode === "workspace-plugin-marketplace") {
-    installedTargetPath = await provisionPluginInstall(target, workspacePath);
-  } else {
-    throw new Error(`Unsupported target provisioning mode: ${config.targetProvisioning.mode}`);
+    if (config.targetProvisioning.mode === "isolated-skill-home") {
+      installedTargetPath = await provisionSkillInstall(target, codexHomePath);
+    } else if (config.targetProvisioning.mode === "workspace-plugin-marketplace") {
+      installedTargetPath = await provisionPluginInstall(target, workspacePath);
+    } else {
+      throw new Error(`Unsupported target provisioning mode: ${config.targetProvisioning.mode}`);
+    }
+  } catch (error) {
+    try {
+      await workspace?.cleanup();
+    } finally {
+      await fs.rm(tempRoot, { recursive: true, force: true });
+    }
+    throw error;
   }
 
   return {
