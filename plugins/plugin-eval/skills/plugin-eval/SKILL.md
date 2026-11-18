@@ -35,7 +35,7 @@ plugin-eval start <path> --request "<user request>" --format markdown
    - run the report
    - initialize `.plugin-eval/benchmark.json`
    - surface the setup questions that will refine the starter scenarios
-   - preview the dry-run command the user can execute next
+   - read [Benchmark Harness](../../references/benchmark-harness.md) before a live run; choose the workspace from the user's task and review target configuration before selecting it
 
 ## Chat Requests To Recognize
 
@@ -58,8 +58,7 @@ plugin-eval analyze <path> --format markdown
 plugin-eval explain-budget <path> --format markdown
 plugin-eval measurement-plan <path> --format markdown
 plugin-eval init-benchmark <path>
-plugin-eval benchmark <path> --dry-run
-plugin-eval benchmark <path>
+plugin-eval benchmark <path> --config <reviewed-config> --workspace <operator-selected-workspace>
 ```
 
 ## Output Expectations

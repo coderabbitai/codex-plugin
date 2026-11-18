@@ -96,7 +96,7 @@ plugin-eval analyze <path> --format markdown
 plugin-eval explain-budget <path> --format markdown
 plugin-eval measurement-plan <path> --format markdown
 plugin-eval init-benchmark <path>
-plugin-eval benchmark <path> --format markdown
+plugin-eval benchmark <path> --config <path>/.plugin-eval/benchmark.json --workspace <workspace-directory> --format markdown
 plugin-eval report <result.json> --format markdown
 plugin-eval compare <before.json> <after.json> --format markdown
 ```
@@ -111,7 +111,7 @@ Compatibility aliases still work:
 1. Start with `plugin-eval start <path> --request "<natural request>" --format markdown`.
 2. Run `analyze` when you want the static local report.
 3. Run `explain-budget` before live measurement if cost is the concern.
-4. Run `init-benchmark`, review and edit the config, then run `benchmark` when you want a live Codex CLI benchmark.
+4. Run `init-benchmark <path> --workspace <workspace-directory>`, review and edit the config, then run `benchmark` with explicit `--config` and `--workspace` paths when you want a live Codex CLI benchmark.
 5. Feed observed usage back into `analyze` or `measurement-plan`.
 
 ### Local-First Behavior
@@ -126,6 +126,11 @@ Compatibility aliases still work:
 - `init-benchmark` creates starter benchmark configuration under `.plugin-eval/` for the target you choose.
 - `benchmark` runs a live local Codex CLI workflow in an isolated temp workspace and writes artifacts under `.plugin-eval/`.
 - Review the generated benchmark configuration before running it, especially when the target project or prompts did not come from you.
+- Existing target configuration is never auto-loaded. Select a reviewed file with `--config <file>`.
+- `--workspace <directory>` selects which host directory may be copied; it defaults to the current directory. The config's `workspace.sourcePath` must resolve to that same directory, including through symlinks. `git-worktree` requires the repository root, and disables hooks, fsmonitor, and checkout filters.
+- `runner.extraArgs` must be empty, and `runner.sandbox` must be `read-only` or `workspace-write`. There is no benchmark option to disable the Codex sandbox or automatically trust target MCP servers.
+- Non-empty `verifiers.commands` require `--allow-verifiers`. These commands run in the host shell with the operator's environment, **outside the Codex sandbox**; authorize only commands you have reviewed and intend to execute.
+- A temporary workspace is not a VM or a host security boundary. The live Codex runner receives a copy of your Codex auth/config and inherits your environment; installed plugins and MCP servers follow Codex's own execution and trust rules. Use a disposable, appropriately restricted environment for untrusted targets.
 - Keep generated `.plugin-eval/` artifacts and local `node_modules/` directories out of commits unless you explicitly want to version them.
 
 ## How It Works As A Codex Plugin

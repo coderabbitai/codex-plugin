@@ -17,8 +17,13 @@ Core workflows:
   plugin-eval analyze <path> [--format json|markdown|html] [--output <file>] [--metric-pack <manifest.json>] [--observed-usage <file>] [--brief-out <file>]
   plugin-eval explain-budget <path> [--format json|markdown] [--output <file>]
   plugin-eval measurement-plan <path> [--format json|markdown] [--observed-usage <file>] [--output <file>]
-  plugin-eval init-benchmark <path> [--output <benchmark.json>] [--model <model>] [--format json|markdown]
-  plugin-eval benchmark <path> [--config <benchmark.json>] [--usage-out <usage.jsonl>] [--result-out <result.json>] [--model <model>] [--format json|markdown|html] [--output <file>]
+  plugin-eval init-benchmark <path> [--workspace <directory>] [--output <benchmark.json>] [--model <model>] [--format json|markdown]
+  plugin-eval benchmark <path> [--config <benchmark.json>] [--workspace <directory>] [--allow-verifiers] [--usage-out <usage.jsonl>] [--result-out <result.json>] [--model <model>] [--format json|markdown|html] [--output <file>]
+
+Benchmark safety:
+  Select reviewed config explicitly with --config; target configs are never auto-loaded.
+  --workspace selects the source directory (default: current directory).
+  --allow-verifiers authorizes reviewed verifier commands to run in the host shell.
 
 Reports:
   plugin-eval report <result.json> [--format json|markdown|html] [--output <file>]
@@ -44,6 +49,8 @@ function parseOptions(argv) {
     metricPackManifests: [],
     observedUsagePaths: [],
     configPath: null,
+    sourcePath: null,
+    allowVerifiers: false,
     usageOutPath: null,
     resultOutPath: null,
     model: null,
@@ -68,8 +75,19 @@ function parseOptions(argv) {
       options.observedUsagePaths.push(argv[index + 1]);
       index += 1;
     } else if (arg === "--config") {
+      if (!argv[index + 1] || argv[index + 1].startsWith("--")) {
+        throw new Error("--config requires a file path.");
+      }
       options.configPath = argv[index + 1];
       index += 1;
+    } else if (arg === "--workspace") {
+      if (!argv[index + 1] || argv[index + 1].startsWith("--")) {
+        throw new Error("--workspace requires a directory path.");
+      }
+      options.sourcePath = argv[index + 1];
+      index += 1;
+    } else if (arg === "--allow-verifiers") {
+      options.allowVerifiers = true;
     } else if (arg === "--usage-out") {
       options.usageOutPath = argv[index + 1];
       index += 1;
@@ -194,6 +212,7 @@ export async function runCli(argv) {
     }
     const payload = await initializeBenchmark(positional[0], {
       outputPath: options.output,
+      sourcePath: options.sourcePath,
       model: options.model,
     });
     await emit(payload, options.format, null);
@@ -206,6 +225,8 @@ export async function runCli(argv) {
     }
     const payload = await runBenchmark(positional[0], {
       configPath: options.configPath,
+      sourcePath: options.sourcePath,
+      allowVerifiers: options.allowVerifiers,
       usageOutPath: options.usageOutPath,
       resultOutPath: options.resultOutPath,
       model: options.model,
