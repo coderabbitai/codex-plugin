@@ -1,7 +1,7 @@
 {
   "name": "coderabbit",
-  "version": "1.1.6",
-  "description": "AI-powered code review in Codex, powered by CodeRabbit.",
+  "version": "1.2.0",
+  "description": "Review local changes with CodeRabbit through one MCP sign-in and a bundled collector.",
   "author": {
     "name": "CodeRabbit AI",
     "email": "support@coderabbit.ai",
@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "CodeRabbit",
     "shortDescription": "Run AI-powered code review for your current changes",
-    "longDescription": "Run CodeRabbit review workflows in Codex to inspect diffs, surface actionable findings, and turn review output into follow-up fixes.",
+    "longDescription": "Connect CodeRabbit once, then review local changes with the plugin-bundled CLI and hosted MCP service.",
     "developerName": "CodeRabbit",
     "category": "Developer Tools",
     "capabilities": [
@@ -37,5 +37,10 @@
       "Review my current changes and provide feedback"
     ],
     "screenshots": []
+  },
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/setup/SKILL.md"
+    }
   }
 }
